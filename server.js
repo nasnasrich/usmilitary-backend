@@ -14,6 +14,7 @@ app.use(
       "http://localhost:5173",
       "http://localhost:5174", // Add this
       "https://usmilitary-frontend-2.vercel.app",
+      "https://troopportal.com"
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
