@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import cors from "cors";
 import { configDotenv } from "dotenv";
 import userRoute from "./routes/userRoute.js";
+import mailRoute from "./routes/mailRoute.js";
 
 configDotenv();
 const app = express();
@@ -23,6 +24,7 @@ app.use(
 
 // Routes
 app.use("/api/auth", userRoute);
+app.use("/api/mail", mailRoute);
 
 app.get("/", (req, res) => {
   res.send("API IS WORKING FINE!");
