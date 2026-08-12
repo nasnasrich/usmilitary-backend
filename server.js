@@ -1,19 +1,20 @@
+import "dotenv/config";
+
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
-import { configDotenv } from "dotenv";
 import userRoute from "./routes/userRoute.js";
 import mailRoute from "./routes/mailRoute.js";
 
-configDotenv();
 const app = express();
+
 app.use(express.json());
 
 app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "http://localhost:5174", // Add this
+      "http://localhost:5174",
       "https://usmilitary-frontend-2.vercel.app",
       "https://troopportal.com",
     ],
@@ -22,7 +23,6 @@ app.use(
   })
 );
 
-// Routes
 app.use("/api/auth", userRoute);
 app.use("/api/mail", mailRoute);
 
@@ -31,16 +31,18 @@ app.get("/", (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI, {});
+    await mongoose.connect(process.env.MONGO_URI);
     console.log("MongoDB connected successfully");
   } catch (error) {
     console.error("Error connecting to MongoDB:", error);
   }
 };
+
 connectDB();
