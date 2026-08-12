@@ -1,14 +1,4 @@
-import nodemailer from "nodemailer";
-
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+import { Resend } from "resend";
 
 export const sendEmergencyLeave = async (req, res) => {
   const {
@@ -41,12 +31,15 @@ export const sendEmergencyLeave = async (req, res) => {
   }
 
   try {
+    // Create Resend AFTER environment variables are loaded
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
     // ==========================================
     // EMAIL 1: SEND APPLICATION TO ADMIN
     // ==========================================
 
-    await transporter.sendMail({
-      from: `"Leave Administration Team" <${process.env.EMAIL_USER}>`,
+    const adminEmail = await resend.emails.send({
+      from: process.env.FROM_EMAIL,
       to: process.env.ADMIN_EMAIL,
       replyTo: email,
       subject: "Emergency Leave Application Received",
@@ -118,12 +111,20 @@ export const sendEmergencyLeave = async (req, res) => {
       `,
     });
 
+    if (adminEmail.error) {
+      console.error("Admin email error:", adminEmail.error);
+
+      return res.status(500).json({
+        message: "Failed to send Emergency Leave application.",
+      });
+    }
+
     // ==========================================
     // EMAIL 2: AUTOMATIC REPLY TO APPLICANT
     // ==========================================
 
-    await transporter.sendMail({
-      from: `"Leave Administration Team" <${process.env.EMAIL_USER}>`,
+    const applicantEmail = await resend.emails.send({
+      from: process.env.FROM_EMAIL,
       to: email,
       replyTo: process.env.ADMIN_EMAIL,
       subject: "Emergency Leave Application Received",
@@ -131,7 +132,7 @@ export const sendEmergencyLeave = async (req, res) => {
       html: `
         <div
           style="
-            font-family: system-ui, Arial, sans-serif;
+            font-family: Arial, sans-serif;
             font-size: 16px;
             color: #333;
             line-height: 1.6;
@@ -175,10 +176,18 @@ export const sendEmergencyLeave = async (req, res) => {
       `,
     });
 
+    if (applicantEmail.error) {
+      console.error("Applicant email error:", applicantEmail.error);
+
+      return res.status(500).json({
+        message:
+          "Application received, but automatic reply could not be sent.",
+      });
+    }
+
     return res.status(200).json({
       message: "Emergency Leave application submitted successfully.",
     });
-
   } catch (error) {
     console.error("Emergency Leave email error:", error);
 
