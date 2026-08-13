@@ -1,10 +1,10 @@
-import "dotenv/config";
-
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
+import { configDotenv } from "dotenv";
 import userRoute from "./routes/userRoute.js";
-import mailRoute from "./routes/mailRoute.js";
+
+configDotenv();
 
 const app = express();
 
@@ -23,8 +23,8 @@ app.use(
   })
 );
 
+// Auth routes
 app.use("/api/auth", userRoute);
-app.use("/api/mail", mailRoute);
 
 app.get("/", (req, res) => {
   res.send("API IS WORKING FINE!");
