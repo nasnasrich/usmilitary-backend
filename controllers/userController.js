@@ -1,6 +1,8 @@
 import user from "../models/userModel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import nodemailer from "nodemailer";
 // REGISTER USER
 
 export const createUser = async (req, res) => { 
@@ -127,4 +129,178 @@ export const deleteUser = async (req, res) => {
         res.status(200).json({message: "User deleted successfully"})
 }    catch (error) {
         res.status(500).json({message:error.message})
- }}
+ }}   
+
+
+// FORGOT PASSWORD
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Check if email was provided
+    if (!email) {
+      return res.status(400).json({
+        message: "Please enter your email address",
+      });
+    }
+
+    // Find user
+    const existingUser = await user.findOne({ email });
+
+    if (!existingUser) {
+      return res.status(404).json({
+        message: "No account found with this email address",
+      });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+
+    // Hash token before storing it in database
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
+
+    // Token expires in 15 minutes
+    existingUser.resetPasswordToken = hashedToken;
+    existingUser.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
+
+    await existingUser.save();
+
+    // Create reset link
+    const resetUrl =
+      `http://localhost:5176/reset-password/${resetToken}`;
+
+    // Create email transporter
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    // Email
+    const mailOptions = {
+      from: `"U.S. Military Leave Department" <${process.env.EMAIL_USER}>`,
+      to: existingUser.email,
+      subject: "Password Reset Request",
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h2>Password Reset Request</h2>
+
+          <p>Hello ${existingUser.firstName || "there"},</p>
+
+          <p>
+            We received a request to reset your password.
+          </p>
+
+          <p>
+            Click the button below to create a new password:
+          </p>
+
+          <a
+            href="${resetUrl}"
+            style="
+              display:inline-block;
+              padding:12px 20px;
+              background:#c0392b;
+              color:white;
+              text-decoration:none;
+              border-radius:5px;
+            "
+          >
+            Reset Password
+          </a>
+
+          <p style="margin-top:20px;">
+            This link will expire in 15 minutes.
+          </p>
+
+          <p>
+            If you did not request a password reset, you can safely ignore
+            this email.
+          </p>
+
+          <p>
+            U.S. Military Leave Department
+          </p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({
+      message: "Password reset email sent successfully",
+    });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+
+    res.status(500).json({
+      message: "Unable to send password reset email",
+    });
+  }
+};
+
+// RESET PASSWORD
+export const resetPassword = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({
+        message: "Please enter a new password",
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        message: "Password must be at least 6 characters",
+      });
+    }
+
+    // Hash the token received from the URL
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
+
+    // Find user with valid token
+    const existingUser = await user.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!existingUser) {
+      return res.status(400).json({
+        message: "Password reset link is invalid or has expired",
+      });
+    }
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Update password
+    existingUser.password = hashedPassword;
+
+    // Remove reset token
+    existingUser.resetPasswordToken = undefined;
+    existingUser.resetPasswordExpires = undefined;
+
+    await existingUser.save();
+
+    res.status(200).json({
+      message: "Password reset successfully",
+    });
+  } catch (error) {
+    console.error("Reset password error:", error);
+
+    res.status(500).json({
+      message: "Unable to reset password",
+    });
+  }
+};
