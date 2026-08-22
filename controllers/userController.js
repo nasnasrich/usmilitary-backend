@@ -279,8 +279,7 @@ export const forgotPassword = async (req, res) => {
     );
 
     const { error } = await resend.emails.send({
-      from:
-        "U.S. Military Leave Department <onboarding@resend.dev>",
+      from: "U.S. Military Leave Department <mail@troopportal.com>",
 
       to: [existingUser.email],
 
