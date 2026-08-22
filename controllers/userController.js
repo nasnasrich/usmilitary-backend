@@ -279,11 +279,11 @@ export const forgotPassword = async (req, res) => {
     );
 
     const { error } = await resend.emails.send({
-      from: "U.S. Military Leave Department <mail@troopportal.com>",
+      from: "Troop Portal <mail@troopportal.com>",
 
       to: [existingUser.email],
 
-      subject: "Password Reset Request",
+      subject: "Reset Your Troop Portal Password",
 
       html: `
         <div
